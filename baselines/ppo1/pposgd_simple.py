@@ -1,6 +1,7 @@
 from baselines.common import Dataset, explained_variance, fmt_row, zipsame
 from baselines import logger
 import baselines.common.tf_util as U
+import os
 import tensorflow as tf, numpy as np
 import time
 from baselines.common.mpi_adam import MpiAdam
@@ -87,8 +88,11 @@ def learn(env, policy_func, *,
         max_timesteps=0, max_episodes=0, max_iters=0, max_seconds=0,  # time constraint
         callback=None, # you can do anything in the callback, since it takes locals(), globals()
         adam_epsilon=1e-5,
-        schedule='constant' # annealing for stepsize parameters (epsilon and adam)
+        schedule='constant', # annealing for stepsize parameters (epsilon and adam)
+        save_model=True # whether to save the model
         ):
+    rank = MPI.COMM_WORLD.Get_rank()
+
     # Setup losses and stuff
     # ----------------------------------------
     ob_space = env.observation_space
@@ -142,6 +146,14 @@ def learn(env, policy_func, *,
     rewbuffer = deque(maxlen=100) # rolling buffer for episode rewards
 
     assert sum([max_iters>0, max_timesteps>0, max_episodes>0, max_seconds>0])==1, "Only one time constraint permitted"
+
+    # Set up logging stuff only for a single worker.
+    if rank == 0:
+        saver = tf.train.Saver()
+        if not os.path.exists(os.path.join(logger.get_dir(), 'model')):
+            os.makedirs(os.path.join(logger.get_dir(), 'model'))
+    else:
+        saver = None
 
     while True:
         if callback: callback(locals(), globals())
@@ -211,8 +223,10 @@ def learn(env, policy_func, *,
         logger.record_tabular("EpisodesSoFar", episodes_so_far)
         logger.record_tabular("TimestepsSoFar", timesteps_so_far)
         logger.record_tabular("TimeElapsed", time.time() - tstart)
-        if MPI.COMM_WORLD.Get_rank()==0:
+        if rank == 0:
             logger.dump_tabular()
+        if save_model: #Save model
+            saver.save(U.get_session(), os.path.join(logger.get_dir(),'model', 'model'))
 
 def flatten_lists(listoflists):
     return [el for list_ in listoflists for el in list_]

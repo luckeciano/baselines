@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from mpi4py import MPI
-from baselines.common import set_global_seeds, tf_util as U
+from baselines.common import boolean_flag, set_global_seeds, tf_util as U
 from baselines import bench
 import os.path as osp
 import gym, logging
@@ -11,7 +11,7 @@ sys.path.insert(0, '../../..')
 
 from core.soccer_env import SoccerEnv
 
-def train(env_id, num_timesteps, seed):
+def train(env_id, num_timesteps, seed, save_model):
     from baselines.ppo1 import mlp_policy, pposgd_simple
     rank = MPI.COMM_WORLD.Get_rank()
     U.make_session(num_cpu=1).__enter__()
@@ -28,9 +28,10 @@ def train(env_id, num_timesteps, seed):
             timesteps_per_actorbatch=2048,
             clip_param=0.2, entcoeff=0.0,
             optim_epochs=10, optim_stepsize=3e-4, optim_batchsize=64,
-            gamma=0.99, lam=0.95, schedule='linear',
+            gamma=0.99, lam=0.95, schedule='linear', save_model=save_model
         )
     env.close()
+
 
 def main():
     import argparse
@@ -38,10 +39,11 @@ def main():
     parser.add_argument('--env', help='environment ID', default='Hopper-v1')
     parser.add_argument('--seed', help='RNG seed', type=int, default=0)
     parser.add_argument('--num-timesteps', type=int, default=int(1e6))
+    boolean_flag(parser, 'save-model', default=True)
     args = parser.parse_args()
     # logger.configure()
-    train(args.env, num_timesteps=args.num_timesteps, seed=args.seed)
 
+    train(args.env, num_timesteps=args.num_timesteps, seed=args.seed, save_model=args.save_model)
 
 if __name__ == '__main__':
     main()
