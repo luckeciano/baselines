@@ -13,7 +13,6 @@ def traj_segment_generator(pi, env, horizon, stochastic):
     ac = env.action_space.sample() # not used, just so we have the datatype
     new = True # marks if we're on first timestep of an episode
     ob = env.reset()
-
     cur_ep_ret = 0 # return in current episode
     cur_ep_len = 0 # len of current episode
     ep_rets = [] # returns of completed episodes in this segment
@@ -29,6 +28,8 @@ def traj_segment_generator(pi, env, horizon, stochastic):
 
     while True:
         prevac = ac
+        # print ("Obs: ", ob)
+        # print (type(ob))
         ac, vpred = pi.act(stochastic, ob)
         # Slight weirdness here because we need value function at time T
         # before returning segment [0, T-1] so we get the correct
@@ -49,6 +50,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         prevacs[i] = prevac
 
         ob, rew, new, _ = env.step(ac)
+        # env.render()
         rews[i] = rew
 
         cur_ep_ret += rew

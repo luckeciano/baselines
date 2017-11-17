@@ -29,12 +29,29 @@ class SeqWriter(object):
 class HumanOutputFormat(KVWriter, SeqWriter):
     def __init__(self, filename_or_file):
         if isinstance(filename_or_file, str):
+            # Creating file if it does not exist
+            dir = os.path.dirname(filename_or_file)
+            if not os.path.exists(dir):
+                    os.makedirs(dir)
             self.file = open(filename_or_file, 'wt')
             self.own_file = True
         else:
             assert hasattr(filename_or_file, 'read'), 'expected file or str, got %s'%filename_or_file
             self.file = filename_or_file
             self.own_file = False
+
+# class HumanOutputFormat(KVWriter, SeqWriter):
+#     def __init__(self, file, is_string=False):
+#         if not is_string:
+#             self.file = file
+        
+#         else:
+#             # Creating file if it does not exist
+#             dir = os.path.dirname(file)
+#             if not os.path.exists(dir):
+#                     os.makedirs(dir)
+#             self.file = open(file, "w+")
+        
 
     def writekvs(self, kvs):
         # Create strings for printing
@@ -305,14 +322,21 @@ class Logger(object):
             if isinstance(fmt, SeqWriter):
                 fmt.writeseq(map(str, args))
 
-Logger.DEFAULT = Logger.CURRENT = Logger(dir=None, output_formats=[HumanOutputFormat(sys.stdout)])
+import os
+from datetime import datetime
+LOG_TIME = datetime.now().strftime("%Y%m%d-%H%M%S")
+LOG_DIR = os.path.join("logs", LOG_TIME)
+HUMAN_DIR = os.path.join(LOG_DIR, "text")
+TENSORFLOW_DIR = os.path.join(LOG_DIR, "tf")
+Logger.DEFAULT = Logger.CURRENT = Logger(dir=LOG_DIR,
+                                         output_formats=[HumanOutputFormat(os.path.join(HUMAN_DIR, "log.txt")), TensorBoardOutputFormat(TENSORFLOW_DIR)])
 
 def configure(dir=None, format_strs=None):
     if dir is None:
         dir = os.getenv('OPENAI_LOGDIR')
     if dir is None:
         dir = osp.join(tempfile.gettempdir(),
-            datetime.datetime.now().strftime("openai-%Y-%m-%d-%H-%M-%S-%f"))
+            datetime.now().strftime("openai-%Y-%m-%d-%H-%M-%S-%f"))
     assert isinstance(dir, str)
     os.makedirs(dir, exist_ok=True)
 

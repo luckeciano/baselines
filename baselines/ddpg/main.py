@@ -16,21 +16,28 @@ import gym
 import tensorflow as tf
 from mpi4py import MPI
 
+import sys
+sys.path.insert(0, '../../..')
+
+from core.soccer_env import SoccerEnv
+
 def run(env_id, seed, noise_type, layer_norm, evaluation, **kwargs):
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
     if rank != 0:
         logger.set_level(logger.DISABLED)
 
+
     # Create envs.
-    env = gym.make(env_id)
+    env = SoccerEnv(rank) #gym.make(env_id)
     env = bench.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)))
     gym.logger.setLevel(logging.WARN)
 
     if evaluation and rank==0:
-        eval_env = gym.make(env_id)
+        # eval_env = gym.make(env_id)
+        eval_env = SoccerEnv(rank, eval=True)
         eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
-        env = bench.Monitor(env, None)
+        # env = bench.Monitor(env, None)
     else:
         eval_env = None
 
@@ -106,6 +113,8 @@ def parse_args():
     parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--num-timesteps', type=int, default=None)
     boolean_flag(parser, 'evaluation', default=False)
+    boolean_flag(parser, 'save-model', default=False)
+
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
     # they agree with the other parameters
@@ -116,9 +125,10 @@ def parse_args():
     return dict_args
 
 
+
 if __name__ == '__main__':
     args = parse_args()
-    if MPI.COMM_WORLD.Get_rank() == 0:
-        logger.configure()
+    # if MPI.COMM_WORLD.Get_rank() == 0:
+        # logger.configure()
     # Run actual script.
     run(**args)

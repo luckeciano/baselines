@@ -15,7 +15,7 @@ from mpi4py import MPI
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
-    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
+    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, save_model,
     tau=0.01, eval_env=None, param_noise_adaption_interval=50):
     rank = MPI.COMM_WORLD.Get_rank()
 
@@ -33,6 +33,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
     # Set up logging stuff only for a single worker.
     if rank == 0:
         saver = tf.train.Saver()
+        if not os.path.exists(os.path.join(logger.get_dir(), 'model')):
+            os.makedirs(os.path.join(logger.get_dir(), 'model'))
     else:
         saver = None
     
@@ -40,7 +42,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
     episode = 0
     eval_episode_rewards_history = deque(maxlen=100)
     episode_rewards_history = deque(maxlen=100)
-    with U.single_threaded_session() as sess:
+    with U.single_threaded_session() as sess: #U.make_session(4) as sess:
         # Prepare everything.
         agent.initialize(sess)
         sess.graph.finalize()
@@ -54,6 +56,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         episode_step = 0
         episodes = 0
         t = 0
+
 
         epoch = 0
         start_time = time.time()
@@ -186,4 +189,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 if eval_env and hasattr(eval_env, 'get_state'):
                     with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
                         pickle.dump(eval_env.get_state(), f)
+                if save_model: #Save model
+                    saver.save(sess, os.path.join(logdir,'model', 'model'))
 
