@@ -38,6 +38,7 @@ def eval(env, model_dir):
 
         if new:
             ob = env.reset()
+    env.close()
 
 def main():
     import argparse
