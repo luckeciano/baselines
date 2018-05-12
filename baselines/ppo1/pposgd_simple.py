@@ -89,8 +89,9 @@ def learn(env, policy_func, *,
         callback=None, # you can do anything in the callback, since it takes locals(), globals()
         adam_epsilon=1e-5,
         schedule='constant', # annealing for stepsize parameters (epsilon and adam)
-        save_model=True # whether to save the model
-        ):
+        save_model=True, # whether to save the model,
+        load_model=True,
+        model_dir=None):
     rank = MPI.COMM_WORLD.Get_rank()
 
     # Setup losses and stuff
@@ -133,6 +134,10 @@ def learn(env, policy_func, *,
 
     U.initialize()
     adam.sync()
+
+    # Load existing model
+    if load_model:
+        U.load_state(os.path.join(model_dir, "model"))
 
     # Prepare for rollouts
     # ----------------------------------------
